@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>障害馬柱分析：保存・復元対応Ver</title>
+    <title>障害馬柱分析：多機能エクスポート版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #1b4332; --bg: #f0f2f5; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; font-size: 13px; }
         .container { max-width: 1000px; margin: 0 auto; }
         
-        /* 入力エリア */
+        /* 入力カード */
         .card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         label { display: block; font-size: 10px; font-weight: bold; color: #666; margin-bottom: 2px; }
@@ -19,40 +20,36 @@
         .record-fixed-area { grid-column: span 2; background: #f8f9fa; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; margin: 4px 0; font-size: 12px; }
         .rec-course { font-weight: bold; color: var(--primary); border-bottom: 1px solid #eee; margin-bottom: 2px; }
 
-        .slot-selector { display: flex; gap: 4px; grid-column: span 2; margin-top: 5px; }
-        .slot-btn { flex: 1; padding: 8px; border: 1px solid #ccc; background: #eee; border-radius: 4px; font-size: 11px; cursor: pointer; }
-        .slot-btn.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: bold; }
-
-        /* テーブル */
-        .outer-scroll { width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
-        .horse-table { border-collapse: collapse; min-width: 900px; width: 100%; }
+        /* 馬柱テーブル */
+        .outer-scroll { width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; padding: 5px; }
+        .horse-table { border-collapse: collapse; min-width: 900px; width: 100%; background: white; }
         .th-slot { font-size: 14px; font-weight: bold; background: #f1f3f1; color: #1b4332; padding: 12px 5px; border-bottom: 2px solid #ddd; }
-        
         .horse-name-cell { position: sticky; left: 0; z-index: 10; background: #333; color: white; width: 110px; min-width: 110px; padding: 10px 8px; text-align: center; border-bottom: 1px solid #444; border-right: 2px solid #222; font-weight: bold; font-size: 14px; }
-        .del-horse { font-size: 9px; color: #ff9999; cursor: pointer; text-decoration: underline; display: block; margin-top: 5px; font-weight: normal; }
-
+        
         .race-td { border-bottom: 1px solid #eee; border-right: 1px solid #ddd; width: 160px; min-width: 160px; padding: 0; vertical-align: top; background: #fafafa; }
         .race-box { padding: 8px 6px; text-align: center; position: relative; min-height: 140px; }
-        .r-note { font-size: 13px; font-weight: bold; color: #000; height: 32px; display: flex; align-items: center; justify-content: center; line-height: 1.1; }
-        .r-cond { font-size: 11px; color: #555; background: #e8e8e8; padding: 1px 6px; border-radius: 3px; margin-bottom: 8px; display: inline-block; }
-        .r-time { font-size: 15px; font-weight: bold; color: #222; }
-        .r-ratio { font-size: 14px; font-weight: bold; color: #333; padding: 3px; border-radius: 4px; border: 1px solid #eee; display: block; margin-top: 4px; }
+        .r-note { font-size: 13px; font-weight: bold; height: 32px; display: flex; align-items: center; justify-content: center; line-height: 1.1; }
+        .r-cond { font-size: 11px; background: #e8e8e8; padding: 1px 6px; border-radius: 3px; margin-bottom: 8px; display: inline-block; }
+        .r-time { font-size: 15px; font-weight: bold; }
+        .r-ratio { font-size: 14px; font-weight: bold; padding: 3px; border-radius: 4px; border: 1px solid #eee; display: block; margin-top: 4px; }
         .best-s { background: #fee2e2; color: #b91c1c; }
         .best-a { background: #ffedd5; color: #c2410c; }
         .best-b { background: #dcfce7; color: #15803d; }
 
-        /* 保存・管理エリア */
-        .admin-block { background: #fff; padding: 12px; border-radius: 8px; margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
-        .admin-btn { flex: 1; min-width: 120px; padding: 10px; border-radius: 4px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; color: white; }
-        .btn-save { background: #2a6fdb; }
-        .btn-load { background: #f39c12; }
-        .btn-reset { background: #e74c3c; }
+        /* 多機能エクスポートボタン */
+        .admin-block { background: #fff; padding: 12px; border-radius: 8px; margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .admin-btn { padding: 10px; border-radius: 4px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-json { background: #2a6fdb; } /* JSON用 */
+        .btn-csv { background: #27ae60; }  /* Excel用 */
+        .btn-img { background: #8e44ad; }  /* 画像用 */
+        .btn-reset { background: #e74c3c; grid-column: span 2; margin-top: 5px; }
+        .admin-btn:active { opacity: 0.7; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
+    <div id="inputArea" class="card">
         <div class="input-grid">
             <div style="grid-column: span 2;"><label>馬名</label><input type="text" id="hName"></div>
             <div><label>競馬場</label><select id="venue" onchange="updateCourse()"><option value="">選択</option><option value="nakayama">中山</option><option value="tokyo">東京</option><option value="kyoto">京都</option><option value="hanshin">阪神</option><option value="niigata">新潟</option><option value="kokura">小倉</option><option value="fukushima">福島</option><option value="chukyo">中京</option></select></div>
@@ -62,47 +59,49 @@
             <div><label>タイム(315.2等)</label><input type="text" id="rTime"></div>
             <div><label>着順</label><input type="number" id="rRank"></div>
             <div><label>馬場</label><select id="rTrack"><option value="良">良</option><option value="稍">稍重</option><option value="重">重</option><option value="不">不良</option></select></div>
-            <div class="slot-selector">
-                <button class="slot-btn active" onclick="setSlot(0)">1走前</button>
-                <button class="slot-btn" onclick="setSlot(1)">2走前</button>
-                <button class="slot-btn" onclick="setSlot(2)">3走前</button>
-                <button class="slot-btn" onclick="setSlot(3)">4走前</button>
-                <button class="slot-btn" onclick="setSlot(4)">5走前</button>
+            <div style="grid-column: span 2; display: flex; gap: 4px; margin-top: 5px;">
+                <button class="slot-btn active" style="flex:1; padding:8px;" onclick="setSlot(0)">1走前</button>
+                <button class="slot-btn" style="flex:1; padding:8px;" onclick="setSlot(1)">2走前</button>
+                <button class="slot-btn" style="flex:1; padding:8px;" onclick="setSlot(2)">3走前</button>
+                <button class="slot-btn" style="flex:1; padding:8px;" onclick="setSlot(3)">4走前</button>
+                <button class="slot-btn" style="flex:1; padding:8px;" onclick="setSlot(4)">5走前</button>
             </div>
         </div>
         <button onclick="addEntry()" style="width:100%; margin-top:10px; padding:12px; background:var(--primary); color:white; border:none; border-radius:4px; font-weight:bold;">登録 / 上書き</button>
     </div>
 
-    <div class="outer-scroll">
-        <table class="horse-table">
-            <thead>
-                <tr>
-                    <th class="horse-name-cell" style="background:#222;">馬名</th>
-                    <th class="th-slot">1走前</th>
-                    <th class="th-slot">2走前</th>
-                    <th class="th-slot">3走前</th>
-                    <th class="th-slot">4走前</th>
-                    <th class="th-slot">5走前</th>
-                </tr>
-            </thead>
-            <tbody id="hTableBody"></tbody>
-        </table>
+    <div id="captureArea" style="background: white; padding: 5px;">
+        <h2 style="font-size: 14px; margin: 5px; color: var(--primary);">障害戦タイム分析馬柱</h2>
+        <div class="outer-scroll">
+            <table class="horse-table" id="mainTable">
+                <thead>
+                    <tr>
+                        <th class="horse-name-cell" style="background:#222;">馬名</th>
+                        <th class="th-slot">1走前</th>
+                        <th class="th-slot">2走前</th>
+                        <th class="th-slot">3走前</th>
+                        <th class="th-slot">4走前</th>
+                        <th class="th-slot">5走前</th>
+                    </tr>
+                </thead>
+                <tbody id="hTableBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <div class="admin-block">
-        <button class="admin-btn btn-save" onclick="downloadData()">📤 バックアップ保存</button>
-        <button class="admin-btn btn-load" onclick="document.getElementById('fileInput').click()">📥 データを復元</button>
+        <button class="admin-btn btn-json" onclick="downloadJSON()">📤 JSON保存 (復元用)</button>
+        <button class="admin-btn btn-json" onclick="document.getElementById('fileInput').click()">📥 復元読み込み</button>
+        <button class="admin-btn btn-csv" onclick="downloadCSV()">📊 CSV出力 (Excel用)</button>
+        <button class="admin-btn btn-img" onclick="saveAsImage()">📸 画像として保存</button>
         <input type="file" id="fileInput" style="display:none" onchange="importData(event)">
         <button class="admin-btn btn-reset" onclick="clearAll()">💥 全データ消去</button>
     </div>
 
-    <details style="background:white; margin-top:10px; border-radius:8px; border:1px solid #ddd;">
-        <summary style="padding:10px; text-align:center; cursor:pointer;">📊 レコード一覧</summary>
-        <div id="masterRecordList" style="padding:10px; font-size:11px;"></div>
-    </details>
 </div>
 
 <script>
+// --- データベースと基本機能は前回と同様 ---
 const db = {
     nakayama: { label: "中山", data: [{ name: "芝4260m", record: 290.5, horse: "エコロデュエル" }, { name: "芝4250m", record: 283.0, horse: "オジュウチョウサン" }, { name: "芝4100m", record: 276.1, horse: "オジュウチョウサン" }, { name: "芝3570m", record: 237.9, horse: "ロックユー" }, { name: "ダ3550m", record: 238.1, horse: "ネイティブボーイ" }, { name: "芝3370m", record: 225.4, horse: "ギルデッドエージ" }, { name: "芝3350m", record: 220.8, horse: "メジロオーモンド" }, { name: "芝3210m", record: 209.3, horse: "スマイルスルー" }, { name: "ダ3200m", record: 211.0, horse: "キャニオンストーム" }, { name: "芝3030m", record: 200.3, horse: "リンデンバウム" }, { name: "ダ2880m", record: 190.2, horse: "マイネルホライズン" }, { name: "芝2710m", record: 182.2, horse: "マイネルタスク" }, { name: "ダ2700m", record: 176.8, horse: "パワークリント" }] },
     kyoto: { label: "京都", data: [{ name: "芝3930m", record: 261.6, horse: "エムエスワールド" }, { name: "ダ3790m", record: 255.0, horse: "アドマイヤホープ" }, { name: "ダ3760m", record: 254.4, horse: "カネトシガバナー" }, { name: "ダ3190m", record: 211.5, horse: "フミノトキメキ" }, { name: "芝3180m", record: 213.5, horse: "ランドパワー" }, { name: "芝3170m", record: 210.4, horse: "テイエムハリアー" }, { name: "ダ3170m", record: 208.4, horse: "リターンエース" }, { name: "ダ2930m", record: 192.2, horse: "テイエムハリアー" }, { name: "ダ2910m", record: 191.2, horse: "サムソンビッグ" }] },
@@ -118,14 +117,14 @@ let horses = {};
 let currentSlot = 0;
 
 window.onload = function() {
-    const saved = localStorage.getItem('horseV7');
+    const saved = localStorage.getItem('horseV8');
     if(saved){ horses = JSON.parse(saved); render(); }
-    initMasterRecords();
 };
 
 function setSlot(n) {
     currentSlot = n;
-    document.querySelectorAll('.slot-btn').forEach((b,i) => b.classList.toggle('active', i===n));
+    document.querySelectorAll('.slot-btn').forEach((b,i) => b.style.background = i===n ? 'var(--primary)' : '#eee');
+    document.querySelectorAll('.slot-btn').forEach((b,i) => b.style.color = i===n ? 'white' : '#333');
 }
 
 function updateCourse() {
@@ -144,9 +143,9 @@ function updateRecordDisplay() {
     const info = document.getElementById('recInfo');
     if(v && i !== ""){
         const d = db[v].data[i];
-        info.innerHTML = `<div class="rec-course">🏁 ${db[v].label} ${d.name}</div><div class="rec-detail">レコード: <b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b> (${d.horse})</div>`;
+        info.innerHTML = `<div class="rec-course">🏁 ${db[v].label} ${d.name}</div>レコード: <b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b>`;
     } else {
-        info.innerHTML = `<div class="rec-course">場所と距離を選択</div><div class="rec-detail">-</div>`;
+        info.innerHTML = `<div class="rec-course">場所と距離を選択</div>-`;
     }
 }
 
@@ -173,7 +172,7 @@ function addEntry() {
     save(); render();
 }
 
-function save() { localStorage.setItem('horseV7', JSON.stringify(horses)); }
+function save() { localStorage.setItem('horseV8', JSON.stringify(horses)); }
 
 function render() {
     const tbody = document.getElementById('hTableBody');
@@ -184,20 +183,65 @@ function render() {
     sorted.forEach(name => {
         let tds = "";
         horses[name].forEach((h, idx) => {
-            if(!h) { tds += `<td class="race-td"><div class="race-box empty">未入力</div></td>`; }
+            if(!h) { tds += `<td class="race-td"><div class="race-box empty" style="color:#ccc; display:flex; align-items:center; justify-content:center; min-height:140px;">-</div></td>`; }
             else {
                 const r = parseFloat(h.ratio);
                 let rClass = r < 101.5 ? 'best-s' : r < 103.0 ? 'best-a' : r < 104.5 ? 'best-b' : '';
                 tds += `<td class="race-td"><div class="race-box">
-                    <div class="box-ctrl"><span style="cursor:pointer;color:#bbb;" onclick="editSlot('${name}',${idx})">✎</span></div>
+                    <div style="position:absolute;top:2px;right:2px;color:#bbb;cursor:pointer;font-size:10px;" onclick="editSlot('${name}',${idx})">✎</div>
                     <div class="r-note">${h.note}</div><div class="r-cond">${h.venue}${h.dist}</div>
-                    <div class="r-time">${h.time}</div><div class="r-rank"><span class="badge" style="background:${cs[h.cond]}">${h.cond}</span> <b>${h.rank}着</b></div>
+                    <div class="r-time">${h.time}</div><div class="r-rank"><span style="background:${cs[h.cond]};color:white;padding:1px 4px;border-radius:3px;font-size:10px;">${h.cond}</span> <b>${h.rank}着</b></div>
                     <div class="r-ratio ${rClass}">${h.ratio}%</div>
                 </div></td>`;
             }
         });
-        tbody.innerHTML += `<tr><td class="horse-name-cell">${name}<span class="del-horse" onclick="delHorse('${name}')">削除</span></td>${tds}</tr>`;
+        tbody.innerHTML += `<tr><td class="horse-name-cell">${name}<div style="font-size:9px;color:#ff9999;text-decoration:underline;cursor:pointer;font-weight:normal;margin-top:5px;" onclick="delHorse('${name}')">削除</div></td>${tds}</tr>`;
     });
+}
+
+// --- エクスポート機能 ---
+
+// 1. CSVダウンロード (Excel用)
+function downloadCSV() {
+    let csv = "\uFEFF馬名,走前,レース名,コース,タイム,着順,馬場,レコード比\n";
+    const sorted = Object.keys(horses).sort((a,b) => a.localeCompare(b, 'ja'));
+    sorted.forEach(name => {
+        horses[name].forEach((h, i) => {
+            if(h) {
+                csv += `${name},${i+1}走前,${h.note},${h.venue}${h.dist},${h.time},${h.rank},${h.cond},${h.ratio}%\n`;
+            }
+        });
+    });
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `分析データ_${new Date().toISOString().slice(5,10)}.csv`;
+    a.click();
+}
+
+// 2. 画像として保存 (html2canvas)
+function saveAsImage() {
+    const area = document.getElementById('captureArea');
+    html2canvas(area, { useCORS: true }).then(canvas => {
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = `馬柱_${new Date().toISOString().slice(5,10)}.png`;
+        a.click();
+    });
+}
+
+function downloadJSON() {
+    const blob = new Blob([JSON.stringify(horses)], {type: "application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `backup_${new Date().toISOString().slice(5,10)}.json`; a.click();
+}
+
+function importData(event) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try { horses = JSON.parse(e.target.result); save(); render(); } catch(err){ alert("エラー"); }
+    };
+    reader.readAsText(event.target.files[0]);
 }
 
 function editSlot(name, idx) {
@@ -211,43 +255,8 @@ function editSlot(name, idx) {
     window.scrollTo(0,0);
 }
 
-function delHorse(n){ if(confirm(n + " を削除？")){ delete horses[n]; save(); render(); } }
-function clearAll(){ if(confirm("全消去しますか？")){ horses={}; localStorage.removeItem('horseV7'); render(); } }
-
-// --- ファイル保存・読み込み機能 ---
-function downloadData() {
-    const blob = new Blob([JSON.stringify(horses, null, 2)], {type: "application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `horse_data_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-}
-
-function importData(event) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-            if(confirm("現在のデータに上書きして復元しますか？")) {
-                horses = data; save(); render();
-            }
-        } catch (err) { alert("無効なファイルです"); }
-    };
-    reader.readAsText(event.target.files[0]);
-}
-
-function initMasterRecords() {
-    const list = document.getElementById('masterRecordList');
-    let h = "";
-    for(const k in db){
-        h += `<div style="background:#eee; padding:4px; font-weight:bold; margin-top:8px;">${db[k].label}</div><table style="width:100%; border-collapse:collapse;">`;
-        db[k].data.forEach(d => {
-            h += `<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">${d.name}</td><td><b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b></td><td style="text-align:right;color:#666">${d.horse}</td></tr>`;
-        });
-        h += `</table>`;
-    }
-    list.innerHTML = h;
-}
+function delHorse(n){ if(confirm(n+"を削除？")){ delete horses[n]; save(); render(); } }
+function clearAll(){ if(confirm("全消去？")){ horses={}; localStorage.removeItem('horseV8'); render(); } }
 </script>
 </body>
 </html>
