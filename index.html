@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>障害馬柱分析</title>
+    <style>
+        :root { --primary: #1b4332; --bg: #f0f2f5; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; font-size: 13px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* 入力エリア */
+        .card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        label { display: block; font-size: 10px; font-weight: bold; color: #666; margin-bottom: 2px; }
+        select, input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+
+        /* レコード表示欄（行を分ける） */
+        .record-fixed-area { 
+            grid-column: span 2; background: #f8f9fa; border-left: 4px solid var(--primary); 
+            padding: 8px; border-radius: 4px; margin: 4px 0; font-size: 12px; line-height: 1.5;
+        }
+        .rec-course { font-weight: bold; color: var(--primary); border-bottom: 1px solid #eee; margin-bottom: 2px; }
+        .rec-detail { font-size: 13px; }
+
+        .slot-selector { display: flex; gap: 4px; grid-column: span 2; margin-top: 5px; }
+        .slot-btn { flex: 1; padding: 8px; border: 1px solid #ccc; background: #eee; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .slot-btn.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: bold; }
+
+        /* テーブル */
+        .outer-scroll { width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .horse-table { border-collapse: collapse; min-width: 900px; width: 100%; }
+        .th-slot { font-size: 14px !important; font-weight: bold !important; background: #f1f3f1; color: #1b4332; padding: 12px 5px !important; border-bottom: 2px solid #ddd; }
+        
+        .horse-name-cell { 
+            position: sticky; left: 0; z-index: 10; background: #333; color: white; width: 110px; min-width: 110px; 
+            padding: 10px 8px; text-align: center; border-bottom: 1px solid #444; border-right: 2px solid #222; 
+            font-weight: bold; font-size: 14px; /* 14pxに統一 */
+        }
+        .del-horse { font-size: 9px; color: #ff9999; cursor: pointer; text-decoration: underline; display: block; margin-top: 5px; font-weight: normal; }
+
+        .race-td { border-bottom: 1px solid #eee; border-right: 1px solid #ddd; width: 160px; min-width: 160px; padding: 0; vertical-align: top; background: #fafafa; }
+        .race-box { padding: 8px 6px; text-align: center; position: relative; min-height: 140px; }
+        
+        .r-note { font-size: 13px; font-weight: bold; color: #000; height: 32px; display: flex; align-items: center; justify-content: center; line-height: 1.1; margin-bottom: 1px; }
+        .r-cond { font-size: 11px; color: #555; background: #e8e8e8; padding: 1px 6px; border-radius: 3px; margin-bottom: 8px; display: inline-block; }
+        
+        .r-time { font-size: 15px; font-weight: bold; color: #222; margin: 0; }
+        .r-rank { font-size: 12px; margin: 2px 0 4px 0; }
+        .badge { color: white; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+
+        .r-ratio { font-size: 14px; font-weight: bold; color: #333; padding: 3px; border-radius: 4px; border: 1px solid #eee; display: block; }
+        .best-s { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .best-a { background: #ffedd5; color: #c2410c; border-color: #fed7aa; }
+        .best-b { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+        
+        /* レコード一覧（アコーディオン） */
+        details { background: white; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd; }
+        summary { padding: 12px; font-weight: bold; color: var(--primary); cursor: pointer; text-align: center; list-style: none; }
+        .master-rec-list { padding: 10px; font-size: 11px; }
+        .v-header { background: #eee; padding: 4px; font-weight: bold; margin-top: 8px; border-left: 3px solid var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="input-grid">
+            <div style="grid-column: span 2;"><label>馬名</label><input type="text" id="hName" placeholder="馬名"></div>
+            <div><label>競馬場</label><select id="venue" onchange="updateCourse()"><option value="">選択</option><option value="nakayama">中山</option><option value="tokyo">東京</option><option value="kyoto">京都</option><option value="hanshin">阪神</option><option value="niigata">新潟</option><option value="kokura">小倉</option><option value="fukushima">福島</option><option value="chukyo">中京</option></select></div>
+            <div><label>距離</label><select id="course" onchange="updateRecordDisplay()"></select></div>
+            
+            <div id="recInfo" class="record-fixed-area">
+                <div class="rec-course">場所と距離を選択</div>
+                <div class="rec-detail">-</div>
+            </div>
+
+            <div><label>レース名</label><input type="text" id="rNote"></div>
+            <div><label>タイム(315.2等)</label><input type="text" id="rTime"></div>
+            <div><label>着順</label><input type="number" id="rRank"></div>
+            <div><label>馬場</label><select id="rTrack"><option value="良">良</option><option value="稍">稍重</option><option value="重">重</option><option value="不">不良</option></select></div>
+            <div class="slot-selector">
+                <button class="slot-btn active" onclick="setSlot(0)">1走前</button>
+                <button class="slot-btn" onclick="setSlot(1)">2走前</button>
+                <button class="slot-btn" onclick="setSlot(2)">3走前</button>
+                <button class="slot-btn" onclick="setSlot(3)">4走前</button>
+                <button class="slot-btn" onclick="setSlot(4)">5走前</button>
+            </div>
+        </div>
+        <button class="btn-primary" style="width:100%; padding:12px; border:none; border-radius:4px; font-weight:bold; margin-top:10px; cursor:pointer;" onclick="addEntry()">登録 / 上書き</button>
+    </div>
+
+    <div class="outer-scroll">
+        <table class="horse-table">
+            <thead>
+                <tr>
+                    <th class="horse-name-cell" style="background:#222;">馬名</th>
+                    <th class="th-slot">1走前</th>
+                    <th class="th-slot">2走前</th>
+                    <th class="th-slot">3走前</th>
+                    <th class="th-slot">4走前</th>
+                    <th class="th-slot">5走前</th>
+                </tr>
+            </thead>
+            <tbody id="hTableBody"></tbody>
+        </table>
+    </div>
+
+    <details>
+        <summary>📊 全競馬場レコード一覧を表示</summary>
+        <div id="masterRecordList" class="master-rec-list"></div>
+    </details>
+    
+    <button onclick="if(confirm('全消去？')) {horses={}; localStorage.removeItem('horseV6'); render();}" style="width:100%; margin-top:20px; padding:10px; background:#999; color:white; border:none; border-radius:4px; font-size:11px;">全データリセット</button>
+</div>
+
+<script>
+const db = {
+    nakayama: { label: "中山", data: [{ name: "芝4260m", record: 290.5, horse: "エコロデュエル" }, { name: "芝4250m", record: 283.0, horse: "オジュウチョウサン" }, { name: "芝4100m", record: 276.1, horse: "オジュウチョウサン" }, { name: "芝3570m", record: 237.9, horse: "ロックユー" }, { name: "ダ3550m", record: 238.1, horse: "ネイティブボーイ" }, { name: "芝3370m", record: 225.4, horse: "ギルデッドエージ" }, { name: "芝3350m", record: 220.8, horse: "メジロオーモンド" }, { name: "芝3210m", record: 209.3, horse: "スマイルスルー" }, { name: "ダ3200m", record: 211.0, horse: "キャニオンストーム" }, { name: "芝3030m", record: 200.3, horse: "リンデンバウム" }, { name: "ダ2880m", record: 190.2, horse: "マイネルホライズン" }, { name: "芝2710m", record: 182.2, horse: "マイネルタスク" }, { name: "ダ2700m", record: 176.8, horse: "パワークリント" }] },
+    kyoto: { label: "京都", data: [{ name: "芝3930m", record: 261.6, horse: "エムエスワールド" }, { name: "ダ3790m", record: 255.0, horse: "アドマイヤホープ" }, { name: "ダ3760m", record: 254.4, horse: "カネトシガバナー" }, { name: "ダ3190m", record: 211.5, horse: "フミノトキメキ" }, { name: "芝3180m", record: 213.5, horse: "ランドパワー" }, { name: "芝3170m", record: 210.4, horse: "テイエムハリアー" }, { name: "ダ3170m", record: 208.4, horse: "リターンエース" }, { name: "ダ2930m", record: 192.2, horse: "テイエムハリアー" }, { name: "ダ2910m", record: 191.2, horse: "サムソンビッグ" }] },
+    tokyo: { label: "東京", data: [{ name: "芝3300m", record: 215.1, horse: "メルシーエイタイム" }, { name: "ダ3300m", record: 216.2, horse: "ギルティストライク" }, { name: "ダ3285m", record: 216.2, horse: "エイシンボストン" }, { name: "芝3110m", record: 203.6, horse: "ロードトゥフェイム" }, { name: "ダ3100m", record: 202.0, horse: "アドマイヤツバサ" }, { name: "ダ3000m", record: 197.5, horse: "シルクリスペクト" }] },
+    hanshin: { label: "阪神", data: [{ name: "芝3900m", record: 259.1, horse: "オジュウチョウサン" }, { name: "芝3800m", record: 258.1, horse: "ファイブポインター" }, { name: "芝3140m", record: 204.8, horse: "オースミムーン" }, { name: "ダ3110m", record: 205.0, horse: "バトルブレーヴ" }, { name: "ダ2970m", record: 195.7, horse: "パルティアシチー" }] },
+    niigata: { label: "新潟", data: [{ name: "芝3290m", record: 214.4, horse: "ユキノスライダー" }, { name: "芝3250m", record: 208.3, horse: "サクセッション" }, { name: "芝2890m", record: 185.5, horse: "ゼノヴァース" }, { name: "芝2850m", record: 181.4, horse: "ダイワウインダム" }] },
+    kokura: { label: "小倉", data: [{ name: "芝3390m", record: 220.0, horse: "ランヘランバ" }, { name: "芝2900m", record: 187.1, horse: "ロングアキレス" }, { name: "芝2860m", record: 186.3, horse: "リバーシブルレーン" }] },
+    fukushima: { label: "福島", data: [{ name: "芝3380m", record: 218.5, horse: "ラッキーストリーク" }, { name: "芝3350m", record: 219.0, horse: "サンライズロイヤル" }, { name: "芝2800m", record: 181.8, horse: "エーシンジーライン" }, { name: "芝2770m", record: 179.3, horse: "サナシオン" }, { name: "芝2750m", record: 177.2, horse: "ヴェイルネビュラ" }] },
+    chukyo: { label: "中京", data: [{ name: "芝3900m", record: 254.8, horse: "マーニ" }, { name: "芝3330m", record: 217.4, horse: "ユウキビバワンダー" }, { name: "芝3300m", record: 213.3, horse: "タガノエスプレッソ" }, { name: "芝3000m", record: 195.8, horse: "プリモスペランツァ" }] }
+};
+
+let horses = {};
+let currentSlot = 0;
+
+window.onload = function() {
+    const saved = localStorage.getItem('horseV6');
+    if(saved){ horses = JSON.parse(saved); render(); }
+    initMasterRecords();
+};
+
+function setSlot(n) {
+    currentSlot = n;
+    document.querySelectorAll('.slot-btn').forEach((b,i) => b.classList.toggle('active', i===n));
+}
+
+function updateCourse() {
+    const v = document.getElementById('venue').value;
+    const c = document.getElementById('course');
+    c.innerHTML = '<option value="">距離を選択</option>';
+    if(v && db[v]) db[v].data.forEach((d,i) => {
+        const o = document.createElement('option'); o.value = i; o.innerText = d.name; c.appendChild(o);
+    });
+    updateRecordDisplay();
+}
+
+function updateRecordDisplay() {
+    const v = document.getElementById('venue').value;
+    const i = document.getElementById('course').value;
+    const info = document.getElementById('recInfo');
+    if(v && i !== ""){
+        const d = db[v].data[i];
+        info.innerHTML = `<div class="rec-course">🏁 ${db[v].label} ${d.name}</div><div class="rec-detail">レコード: <b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b> (${d.horse})</div>`;
+    } else {
+        info.innerHTML = `<div class="rec-course">場所と距離を選択</div><div class="rec-detail">-</div>`;
+    }
+}
+
+function addEntry() {
+    const name = document.getElementById('hName').value.trim() || "未入力";
+    const vKey = document.getElementById('venue').value;
+    const cIdx = document.getElementById('course').value;
+    const val = document.getElementById('rTime').value.trim();
+    if(!vKey || cIdx === "" || !val) return alert("入力不足");
+
+    let s = 0;
+    if(val.includes(':')){ const p = val.split(':'); s = parseFloat(p[0])*60 + parseFloat(p[1]); }
+    else { s = Math.floor(parseFloat(val)/100)*60 + (parseFloat(val)%100); }
+    const tStr = `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`;
+    const ratio = (s / db[vKey].data[cIdx].record) * 100;
+
+    if(!horses[name]) horses[name] = [null, null, null, null, null];
+    horses[name][currentSlot] = {
+        note: document.getElementById('rNote').value || "-",
+        venue: db[vKey].label, dist: db[vKey].data[cIdx].name,
+        time: tStr, ratio: ratio.toFixed(2), rank: document.getElementById('rRank').value || "-",
+        cond: document.getElementById('rTrack').value
+    };
+    localStorage.setItem('horseV6', JSON.stringify(horses));
+    render();
+}
+
+function render() {
+    const tbody = document.getElementById('hTableBody');
+    tbody.innerHTML = "";
+    const cs = {"良":"#28a745","稍":"#8bc34a","重":"#ffc107","不":"#f44336"};
+
+    // 五十音順にソートして描画
+    const sortedNames = Object.keys(horses).sort((a, b) => a.localeCompare(b, 'ja'));
+
+    sortedNames.forEach(name => {
+        let tds = "";
+        horses[name].forEach((h, idx) => {
+            if(!h) { tds += `<td class="race-td"><div class="race-box empty">未入力</div></td>`; }
+            else {
+                const r = parseFloat(h.ratio);
+                let rClass = r < 101.5 ? 'best-s' : r < 103.0 ? 'best-a' : r < 104.5 ? 'best-b' : '';
+                tds += `
+                <td class="race-td">
+                    <div class="race-box">
+                        <div class="box-ctrl"><span style="cursor:pointer;color:#bbb;" onclick="editSlot('${name}',${idx})">✎</span></div>
+                        <div class="r-note">${h.note}</div>
+                        <div class="r-cond">${h.venue}${h.dist}</div>
+                        <div class="r-time">${h.time}</div>
+                        <div class="r-rank"><span class="badge" style="background:${cs[h.cond]}">${h.cond}</span> <b>${h.rank}着</b></div>
+                        <div class="r-ratio ${rClass}">${h.ratio}%</div>
+                    </div>
+                </td>`;
+            }
+        });
+        tbody.innerHTML += `<tr><td class="horse-name-cell">${name}<span class="del-horse" onclick="delHorse('${name}')">削除</span></td>${tds}</tr>`;
+    });
+}
+
+function editSlot(name, idx) {
+    const h = horses[name][idx];
+    document.getElementById('hName').value = name;
+    document.getElementById('rNote').value = h.note;
+    document.getElementById('rTime').value = h.time;
+    document.getElementById('rRank').value = h.rank;
+    document.getElementById('rTrack').value = h.cond;
+    setSlot(idx);
+    window.scrollTo(0,0);
+}
+
+function delHorse(n){ if(confirm(n + " を削除しますか？")){ delete horses[n]; localStorage.setItem('horseV6', JSON.stringify(horses)); render(); } }
+
+function initMasterRecords() {
+    const list = document.getElementById('masterRecordList');
+    let h = "";
+    for(const k in db){
+        h += `<div class="v-header">${db[k].label}</div><table style="width:100%; border-collapse:collapse;">`;
+        db[k].data.forEach(d => {
+            h += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:4px;">${d.name}</td>
+                    <td><b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b></td>
+                    <td style="color:#666; text-align:right;">${d.horse}</td>
+                  </tr>`;
+        });
+        h += `</table>`;
+    }
+    list.innerHTML = h;
+}
+</script>
+</body>
+</html>
