@@ -29,10 +29,9 @@
         .race-td { border-bottom: 1px solid #eee; border-right: 1px solid #ddd; width: 160px; min-width: 160px; padding: 0; vertical-align: top; }
         .race-box { padding: 8px 6px; text-align: center; position: relative; min-height: 140px; }
         
-        /* レース名を囲むスタイル */
-        .r-note { font-size: 11px; font-weight: bold; height: 32px; display: flex; align-items: center; justify-content: center; line-height: 1.2; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 4px; padding: 2px; background: #fafafa; }
+        /* レース名をさらに強調 */
+        .r-note { font-size: 13px; font-weight: bold; height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1.2; border: 1.5px solid #1b4332; border-radius: 4px; margin-bottom: 4px; padding: 2px; background: #fff; color: #1b4332; }
         
-        /* 条件はシンプルに */
         .r-cond { font-size: 11px; color: #666; margin-bottom: 4px; display: block; }
 
         .r-time { font-size: 16px; font-weight: bold; margin: 2px 0; }
@@ -112,14 +111,10 @@
         <button class="admin-btn" style="background:#e74c3c; grid-column:span 2; margin-top:5px;" onclick="clearAll()">💥 全データ消去（登録できない時もこちら）</button>
         <input type="file" id="fileInput" style="display:none" onchange="importData(event)">
     </div>
-
-    <div style="margin-top: 20px;">
-        <button class="accordion-btn" onclick="toggleAccordion()">▼ 障害レコード一覧</button>
-        <div id="dbList" class="accordion-content"></div>
-    </div>
 </div>
 
 <script>
+// DB・ロジック（STORAGE_KEY等は以前の horse_v14_data を継承）
 const db = {
     nakayama: { label: "中山", data: [{ name: "芝4260m", record: 290.5 }, { name: "芝4250m", record: 283.0 }, { name: "芝4100m", record: 276.1 }, { name: "芝3570m", record: 237.9 }, { name: "ダ3550m", record: 238.1 }, { name: "芝3370m", record: 225.4 }, { name: "芝3350m", record: 220.8 }, { name: "芝3210m", record: 209.3 }, { name: "ダ3200m", record: 211.0 }, { name: "芝3030m", record: 200.3 }, { name: "ダ2880m", record: 190.2 }, { name: "芝2710m", record: 182.2 }, { name: "ダ2700m", record: 176.8 }] },
     kyoto: { label: "京都", data: [{ name: "芝3930m", record: 261.6 }, { name: "ダ3790m", record: 255.0 }, { name: "ダ3760m", record: 254.4 }, { name: "ダ3190m", record: 211.5 }, { name: "芝3180m", record: 213.5 }, { name: "芝3170m", record: 210.4 }, { name: "ダ3170m", record: 208.4 }, { name: "ダ2930m", record: 192.2 }, { name: "ダ2910m", record: 191.2 }] },
@@ -140,24 +135,7 @@ window.onload = () => {
     if(saved) {
         try { horses = JSON.parse(saved); render(); } catch(e) { console.error("Data load error"); }
     }
-    initDb();
 };
-
-function initDb() {
-    const list = document.getElementById('dbList');
-    let html = "";
-    for(let v in db){
-        db[v].data.forEach(d => {
-            html += `<div style="display:flex;justify-content:space-between;padding:3px;border-bottom:1px solid #eee;"><span>${db[v].label} ${d.name}</span><b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b></div>`;
-        });
-    }
-    list.innerHTML = html;
-}
-
-function toggleAccordion() {
-    const content = document.getElementById('dbList');
-    content.style.display = (content.style.display === 'block') ? 'none' : 'block';
-}
 
 function showToast(msg) {
     const t = document.getElementById('toast');
@@ -200,7 +178,7 @@ function addEntry() {
     const val = document.getElementById('rTime').value.trim();
     const rankVal = document.getElementById('rRank').value.trim();
 
-    if(!name || !vKey || cIdx === "" || !val) return alert("入力不足（馬名・場所・距離・タイム）");
+    if(!name || !vKey || cIdx === "" || !val) return alert("入力不足");
 
     let isAbort = (val === "0" || val === "中止");
     let s = 0, tStr = "中止", ratio = "-";
@@ -210,7 +188,8 @@ function addEntry() {
             const p = val.split(':');
             s = parseFloat(p[0])*60 + parseFloat(p[1]);
         } else {
-            s = Math.floor(parseFloat(val)/100)*60 + (parseFloat(val)%100);
+            const numVal = parseFloat(val);
+            s = Math.floor(numVal/100)*60 + (numVal%100);
         }
         tStr = `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`;
         ratio = ((s / db[vKey].data[cIdx].record) * 100).toFixed(2);
@@ -228,7 +207,7 @@ function addEntry() {
     };
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(horses));
-    showToast("登録完了しました");
+    showToast("登録完了");
     render();
 }
 
@@ -300,7 +279,7 @@ function editSlot(name, idx) {
 function downloadJSON() { const blob = new Blob([JSON.stringify(horses)], {type: "application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `horse_data.json`; a.click(); }
 function importData(event) { const reader = new FileReader(); reader.onload = (e) => { try { horses = JSON.parse(e.target.result); localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); render(); } catch(err){ alert("読込失敗"); } }; reader.readAsText(event.target.files[0]); }
 function delHorse(n){ if(confirm(n + "を削除？")){ delete horses[n]; localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); render(); } }
-function clearAll(){ if(confirm("全消去します。よろしいですか？")){ horses={}; localStorage.removeItem(STORAGE_KEY); render(); } }
+function clearAll(){ if(confirm("全消去しますか？")){ horses={}; localStorage.removeItem(STORAGE_KEY); render(); } }
 </script>
 </body>
 </html>
