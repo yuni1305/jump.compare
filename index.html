@@ -6,104 +6,129 @@
     <title>障害馬柱分析</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #1b4332; --bg: #f0f2f5; }
+        :root { --primary: #1b4332; --accent: #2d6a4f; --bg: #f0f2f5; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; font-size: 13px; }
         .container { max-width: 1000px; margin: 0 auto; }
         
-        /* 入力エリア */
+        /* タイトル入力欄のスタイル */
+        .title-card { background: var(--primary); color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .title-input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; font-size: 18px; font-weight: bold; text-align: center; width: 100%; padding: 8px; border-radius: 4px; box-sizing: border-box; }
+        .title-input::placeholder { color: rgba(255,255,255,0.5); }
+
         .card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        label { display: block; font-size: 10px; font-weight: bold; color: #666; margin-bottom: 2px; }
-        select, input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-        .record-fixed-area { grid-column: span 2; background: #f8f9fa; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; margin: 4px 0; font-size: 12px; }
-        
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        label { display: block; font-size: 11px; font-weight: bold; color: #666; margin-bottom: 4px; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+        .choice-btn { flex: 1; min-width: 50px; padding: 8px 4px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 12px; cursor: pointer; transition: 0.2s; color: #333; display: flex; align-items: center; justify-content: center; }
+        .choice-btn:active { transform: translateY(2px); }
+        .choice-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .dist-btn { background: #e9ecef; border: none; font-size: 11px; }
+        .dist-btn.active { background: #3d85c6; color: white; }
+        .step-btn { background: #f8f9fa; border-color: #ccc; font-weight: bold; font-size: 14px; }
+        .quick-text-btn { background: #fff3e0; border-color: #ffcc80; color: #e65100; font-weight: bold; }
+        .record-fixed-area { grid-column: span 2; background: #eef2f3; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; font-size: 12px; min-height: 1.2em; }
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-
-        /* 馬柱テーブル */
-        .outer-scroll { width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; padding: 5px; }
-        .horse-table { border-collapse: collapse; min-width: 950px; width: 100%; background: white; }
-        .th-slot { font-size: 13px; font-weight: bold; background: #f1f3f1; color: #1b4332; padding: 10px 5px; border-bottom: 2px solid #ddd; }
-        
-        .horse-info-cell { position: sticky; left: 0; z-index: 10; background: #333; color: white; width: 120px; min-width: 120px; padding: 8px; text-align: center; border-bottom: 1px solid #444; border-right: 2px solid #111; }
-        .h-num-badge { background: #fff; color: #000; padding: 1px 6px; border-radius: 4px; font-weight: bold; margin-right: 4px; }
-
-        .race-td { border-bottom: 1px solid #eee; border-right: 1px solid #ddd; width: 160px; min-width: 160px; padding: 0; vertical-align: top; }
-        .race-box { padding: 8px 6px; text-align: center; position: relative; min-height: 145px; }
-        
-        /* レース名スタイル */
-        .r-note { font-size: 13px; font-weight: bold; height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1.2; border: 1.5px solid #1b4332; border-radius: 4px; margin-bottom: 4px; padding: 2px; background: #fff; color: #1b4332; }
-        
-        /* 特別・重賞レースの強調表示 */
-        .r-note.special-race { 
-            background: #e6fffa; 
-            border: 2.5px solid #065f46; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .r-cond { font-size: 11px; color: #666; margin-bottom: 4px; display: block; }
+        .outer-scroll { width: 100%; overflow-x: auto; background: white; border-radius: 8px; margin-bottom: 10px; padding: 5px; }
+        .horse-table { border-collapse: collapse; min-width: 950px; width: 100%; }
+        .horse-info-cell { position: sticky; left: 0; z-index: 10; background: #333; color: white; width: 120px; padding: 8px; text-align: center; border-bottom: 1px solid #444; }
+        .race-td { border-bottom: 1px solid #eee; border-right: 1px solid #ddd; width: 170px; padding: 0; vertical-align: top; }
+        .race-box { padding: 8px 6px; text-align: center; min-height: 145px; position: relative; }
+        .r-note-disp { font-size: 13px; font-weight: bold; height: 36px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #1b4332; border-radius: 4px; margin-bottom: 4px; background: #fff; line-height: 1.2; padding: 2px; }
+        .special-race { background: #e6fffa; border: 2.5px solid #065f46; }
         .r-time { font-size: 16px; font-weight: bold; margin: 2px 0; }
-        .r-abort { color: #d32f2f; font-weight: bold; font-size: 16px; margin: 2px 0; }
-
-        .r-sub-info { font-size: 12px; display: flex; justify-content: center; gap: 5px; align-items: center; margin-top: 2px; }
-        .badge-cond { color: white; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
-        .badge-weight { color: #444; font-size: 11px; font-weight: bold; }
-        
-        .rank-badge { min-width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 13px; }
-        .rank-1 { background: #ffd700; color: #000; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        .rank-2 { background: #c0c0c0; color: #000; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        .rank-3 { background: #cd7f32; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        .rank-other { color: #333; }
-
-        .r-ratio { font-size: 14px; font-weight: bold; padding: 3px; border-radius: 4px; border: 1px solid #eee; display: block; margin-top: 5px; }
-        .best-yellow { background: #fef08a; color: #854d0e; border-color: #fde047; }
-        .best-blue { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
-        .best-orange { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
-
-        .admin-block { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .admin-btn { padding: 10px; border-radius: 4px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; color: white; }
-        .accordion-btn { width: 100%; padding: 12px; background: #ddd; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: left; margin-top: 15px; }
-        .accordion-content { display: none; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto; font-size: 11px; }
+        .rank-badge { min-width: 32px; height: 22px; padding: 0 4px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 1px solid #ccc; white-space: nowrap; background: #fff; }
+        .rank-1 { background: #ffd700; color: #000; border: none; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .rank-2 { background: #c0c0c0; color: #000; border: none; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .rank-3 { background: #cd7f32; color: #fff; border: none; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .r-ratio { font-size: 14px; font-weight: bold; padding: 3px; border-radius: 4px; display: block; margin-top: 5px; border: 1px solid #eee; }
+        .best-yellow { background: #fef08a; color: #854d0e; }
+        .best-blue { background: #dbeafe; color: #1e40af; }
+        .best-orange { background: #ffedd5; color: #9a3412; }
+        .admin-block { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+        .admin-btn { padding: 10px 2px; border-radius: 4px; border: none; font-size: 10px; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="toast">データを更新しました</div>
+<div id="toast"></div>
 
 <div class="container">
-    <div id="inputArea" class="card">
-        <div class="input-grid">
-            <div><label>馬番</label><input type="number" id="hNum" tabindex="1"></div>
-            <div><label>馬名</label><input type="text" id="hName" tabindex="2"></div>
-            <div style="grid-column: span 2;"><label>レース名</label><input type="text" id="rNote" tabindex="3" placeholder="重賞などは自動で強調されます"></div>
-            <div><label>競馬場</label><select id="venue" onchange="updateCourse()" tabindex="4"><option value="">選択</option><option value="nakayama">中山</option><option value="tokyo">東京</option><option value="kyoto">京都</option><option value="hanshin">阪神</option><option value="niigata">新潟</option><option value="kokura">小倉</option><option value="fukushima">福島</option><option value="chukyo">中京</option></select></div>
-            <div><label>距離</label><select id="course" onchange="updateRecordDisplay()" tabindex="5"></select></div>
-            <div id="recInfo" class="record-fixed-area">場所と距離を選択</div>
-            <div><label>馬場状態</label><select id="rTrack" tabindex="6"><option value="良">良</option><option value="稍">稍重</option><option value="重">重</option><option value="不">不良</option></select></div>
-            <div><label>着順</label><input type="text" id="rRank" tabindex="7"></div>
-            <div><label>斤量</label><input type="text" id="rWeight" tabindex="8"></div>
-            <div><label>タイム (中止=0)</label><input type="text" id="rTime" tabindex="9"></div>
-            <div style="grid-column: span 2; display: flex; gap: 4px; margin-top: 5px;">
-                <button class="slot-btn" id="s0" style="flex:1; padding:8px; background:var(--primary); color:white;" onclick="setSlot(0)">1走前</button>
-                <button class="slot-btn" id="s1" style="flex:1; padding:8px; background:#eee;" onclick="setSlot(1)">2走前</button>
-                <button class="slot-btn" id="s2" style="flex:1; padding:8px; background:#eee;" onclick="setSlot(2)">3走前</button>
-                <button class="slot-btn" id="s3" style="flex:1; padding:8px; background:#eee;" onclick="setSlot(3)">4走前</button>
-                <button class="slot-btn" id="s4" style="flex:1; padding:8px; background:#eee;" onclick="setSlot(4)">5走前</button>
-            </div>
-        </div>
-        <button onclick="addEntry()" style="width:100%; margin-top:10px; padding:15px; background:var(--primary); color:white; border:none; border-radius:4px; font-weight:bold;" tabindex="10">登録 / 上書き</button>
+    <div class="title-card">
+        <label style="color: rgba(255,255,255,0.8); margin-bottom: 5px;">分析対象レース名</label>
+        <input type="text" id="targetRaceName" class="title-input" placeholder="例：中山グランドジャンプ" oninput="saveTitle()">
     </div>
 
-    <div id="captureArea" style="background: white; padding: 5px;">
+    <div class="card">
+        <div class="input-grid">
+            <div><label>馬番</label><input type="number" id="hNum" placeholder="5"></div>
+            <div><label>馬名</label><input type="text" id="hName" placeholder="馬名"></div>
+            
+            <div style="grid-column: span 2;">
+                <label>過去走の場所</label>
+                <div class="btn-group" id="venueGroup"></div>
+                <div class="btn-group" id="distGroup" style="min-height: 32px;"></div>
+                <input type="hidden" id="venue">
+                <input type="hidden" id="course">
+            </div>
+
+            <div id="recInfo" class="record-fixed-area">場所と距離を選択してください</div>
+
+            <div style="grid-column: span 2;">
+                <label>過去走のレース名</label>
+                <input type="text" id="rNote" placeholder="レース名を入力" style="margin-bottom: 4px;">
+                <div class="btn-group">
+                    <button type="button" class="choice-btn quick-text-btn" onclick="quickRace('未勝利')">未勝利</button>
+                    <button type="button" class="choice-btn quick-text-btn" onclick="quickRace('OP')">OP</button>
+                    <button type="button" class="choice-btn quick-text-btn" onclick="appendJS()">＋JS</button>
+                </div>
+            </div>
+
+            <div><label>着順</label>
+                <input type="text" id="rRank" inputmode="numeric" value="1" style="text-align: center; font-weight: bold; margin-bottom: 4px;">
+                <div style="display: flex; gap: 2px;">
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rRank', -1)">-1</button>
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rRank', 1)">+1</button>
+                </div>
+            </div>
+            
+            <div><label>タイム (例: 3452)</label><input type="text" id="rTime" inputmode="numeric" placeholder="3:45.2"></div>
+            
+            <div><label>馬場</label><select id="rTrack"><option>良</option><option>稍</option><option>重</option><option>不</option></select></div>
+            
+            <div><label>斤量</label>
+                <input type="text" id="rWeight" value="60" style="text-align: center; background: #fffbe6; font-weight: bold; font-size: 18px; margin-bottom: 4px;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;">
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rWeight', -1)">-1</button>
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rWeight', -0.5)">-0.5</button>
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rWeight', 0.5)">+0.5</button>
+                    <button type="button" class="choice-btn step-btn" onclick="stepInput('rWeight', 1)">+1</button>
+                </div>
+            </div>
+
+            <div style="grid-column: span 2; display: flex; gap: 4px; margin-top: 5px;">
+                <button class="choice-btn slot-btn active" onclick="setSlot(0)">1走前</button>
+                <button class="choice-btn slot-btn" onclick="setSlot(1)">2走前</button>
+                <button class="choice-btn slot-btn" onclick="setSlot(2)">3走前</button>
+                <button class="choice-btn slot-btn" onclick="setSlot(3)">4走前</button>
+                <button class="choice-btn slot-btn" onclick="setSlot(4)">5走前</button>
+            </div>
+        </div>
+        <button onclick="addEntry()" style="width:100%; margin-top:15px; padding:15px; background:var(--primary); color:white; border:none; border-radius:4px; font-weight:bold; font-size:16px;">登録して表示を更新</button>
+    </div>
+
+    <div id="captureArea" style="background: white; padding: 10px; border-radius: 8px;">
+        <h2 id="displayTitle" style="text-align:center; color:var(--primary); margin: 5px 0 15px 0;">分析シート</h2>
         <div class="outer-scroll">
             <table class="horse-table">
                 <thead>
                     <tr>
-                        <th class="horse-info-cell">馬番 / 馬名</th>
-                        <th class="th-slot">1走前</th>
-                        <th class="th-slot">2走前</th>
-                        <th class="th-slot">3走前</th>
-                        <th class="th-slot">4走前</th>
-                        <th class="th-slot">5走前</th>
+                        <th class="horse-info-cell" style="background:#f1f3f1; color:#1b4332">馬番 / 馬名</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; color: #1b4332; font-weight: bold;">1走前</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; color: #1b4332; font-weight: bold;">2走前</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; color: #1b4332; font-weight: bold;">3走前</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; color: #1b4332; font-weight: bold;">4走前</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; color: #1b4332; font-weight: bold;">5走前</th>
                     </tr>
                 </thead>
                 <tbody id="hTableBody"></tbody>
@@ -112,15 +137,13 @@
     </div>
 
     <div class="admin-block">
-        <button class="admin-btn" style="background:#2a6fdb" onclick="downloadJSON()">📤 保存</button>
-        <button class="admin-btn" style="background:#34495e" onclick="document.getElementById('fileInput').click()">📥 読込</button>
-        <button class="admin-btn" style="background:#8e44ad" onclick="saveAsImage()">📸 画像保存</button>
-        <button class="admin-btn" style="background:#e74c3c" onclick="clearAll()">💥 全データ消去</button>
+        <button class="admin-btn" style="background:#2a6fdb" onclick="downloadJSON()">JSON</button>
+        <button class="admin-btn" style="background:#27ae60" onclick="downloadCSV()">CSV</button>
+        <button class="admin-btn" style="background:#34495e" onclick="document.getElementById('fileInput').click()">読込</button>
+        <button class="admin-btn" style="background:#8e44ad" onclick="saveAsImage()">画像</button>
+        <button class="admin-btn" style="background:#e74c3c" onclick="clearAll()">消去</button>
         <input type="file" id="fileInput" style="display:none" onchange="importData(event)">
     </div>
-
-    <button class="accordion-btn" onclick="toggleAccordion()">▼ 競馬場別レコード一覧</button>
-    <div id="dbList" class="accordion-content"></div>
 </div>
 
 <script>
@@ -137,64 +160,76 @@ const db = {
 
 let horses = {};
 let currentSlot = 0;
-const STORAGE_KEY = 'horse_v16_special';
+const STORAGE_KEY = 'horse_v23_title';
 
 window.onload = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if(saved) { try { horses = JSON.parse(saved); render(); } catch(e) {} }
-    initDb();
+    const savedTitle = localStorage.getItem(STORAGE_KEY + '_title');
+    if(savedTitle) {
+        document.getElementById('targetRaceName').value = savedTitle;
+        document.getElementById('displayTitle').innerText = savedTitle;
+    }
+    initVenueButtons();
 };
 
-function initDb() {
-    const list = document.getElementById('dbList');
-    let html = "";
-    for(let v in db){
-        html += `<div style="background:#1b4332; color:white; padding:6px 10px; font-weight:bold; margin-top:10px; border-radius:4px;">${db[v].label}</div>`;
-        db[v].data.forEach(d => {
-            html += `<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #eee;background:white;">
-                <span>${d.name}</span><b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b>
-            </div>`;
-        });
+function saveTitle() {
+    const t = document.getElementById('targetRaceName').value;
+    document.getElementById('displayTitle').innerText = t || "分析シート";
+    localStorage.setItem(STORAGE_KEY + '_title', t);
+}
+
+function initVenueButtons() {
+    const group = document.getElementById('venueGroup');
+    group.innerHTML = "";
+    for(let key in db) {
+        group.innerHTML += `<button class="choice-btn venue-btn" onclick="selectVenue('${key}', this)">${db[key].label}</button>`;
     }
-    list.innerHTML = html;
 }
 
-function toggleAccordion() {
-    const content = document.getElementById('dbList');
-    content.style.display = (content.style.display === 'block') ? 'none' : 'block';
+function selectVenue(key, btn) {
+    document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('venue').value = key;
+    const distGroup = document.getElementById('distGroup');
+    distGroup.innerHTML = "";
+    db[key].data.forEach((d, i) => {
+        distGroup.innerHTML += `<button class="choice-btn dist-btn" onclick="selectDist(${i}, this)">${d.name}</button>`;
+    });
 }
 
-function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.innerText = msg; t.style.opacity = "1";
-    setTimeout(() => { t.style.opacity = "0"; }, 2000);
+function selectDist(idx, btn) {
+    document.querySelectorAll('.dist-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('course').value = idx;
+    const v = document.getElementById('venue').value;
+    const d = db[v].data[idx];
+    document.getElementById('recInfo').innerHTML = `🏁 レコード: <b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b>`;
 }
+
+function quickRace(txt) { document.getElementById('rNote').value = txt; }
+function appendJS() { const el = document.getElementById('rNote'); el.value = el.value + "JS"; }
+
+function stepInput(id, val) {
+    const el = document.getElementById(id);
+    let cur = parseFloat(el.value) || 0;
+    if (id === 'rRank' && cur + val < 1) return;
+    el.value = (Math.round((cur + val) * 10) / 10);
+}
+
+document.getElementById('rTime').addEventListener('blur', function(e) {
+    let v = e.target.value.replace(/[^0-9]/g, '');
+    if (v.length >= 3) {
+        let ms = v.slice(-1), sec = v.slice(-3, -1), min = v.slice(0, -3) || "0";
+        e.target.value = `${min}:${sec}.${ms}`;
+    }
+});
 
 function setSlot(n) {
     currentSlot = n;
     document.querySelectorAll('.slot-btn').forEach((b,i) => {
-        b.style.background = (i === n) ? 'var(--primary)' : '#eee';
-        b.style.color = (i === n) ? 'white' : '#333';
+        if(i === n) b.classList.add('active'); else b.classList.remove('active');
     });
-}
-
-function updateCourse() {
-    const v = document.getElementById('venue').value;
-    const c = document.getElementById('course');
-    c.innerHTML = '<option value="">距離を選択</option>';
-    if(v && db[v]) db[v].data.forEach((d,i) => {
-        const o = document.createElement('option'); o.value = i; o.innerText = d.name; c.appendChild(o);
-    });
-}
-
-function updateRecordDisplay() {
-    const v = document.getElementById('venue').value;
-    const i = document.getElementById('course').value;
-    const info = document.getElementById('recInfo');
-    if(v && i !== ""){
-        const d = db[v].data[i];
-        info.innerHTML = `🏁 レコード: <b>${Math.floor(d.record/60)}:${(d.record%60).toFixed(1).padStart(4,'0')}</b>`;
-    }
 }
 
 function addEntry() {
@@ -203,21 +238,15 @@ function addEntry() {
     const vKey = document.getElementById('venue').value;
     const cIdx = document.getElementById('course').value;
     const val = document.getElementById('rTime').value.trim();
-    const rankVal = document.getElementById('rRank').value.trim();
 
-    if(!name || !vKey || cIdx === "" || !val) return alert("入力不足");
+    if(!name || !vKey || cIdx === "" || !val) return alert("入力不足（場所・距離・タイムは必須）");
 
-    let isAbort = (val === "0" || val === "中止");
-    let s = 0, tStr = "中止", ratio = "-";
-
+    let isAbort = (val === "0" || val === "中止"), s = 0, tStr = "中止", ratio = "-";
     if(!isAbort) {
-        if(val.includes(':')){
-            const p = val.split(':');
-            s = parseFloat(p[0])*60 + parseFloat(p[1]);
-        } else {
-            const numVal = parseFloat(val);
-            s = Math.floor(numVal/100)*60 + (numVal%100);
-        }
+        const p = val.replace('.', ':').split(':');
+        if(p.length === 2) s = parseFloat(p[0])*60 + parseFloat(p[1]);
+        else if(p.length === 3) s = parseFloat(p[0])*60 + parseFloat(p[1]) + parseFloat(p[2])/10;
+        else s = parseFloat(val);
         tStr = `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`;
         ratio = ((s / db[vKey].data[cIdx].record) * 100).toFixed(2);
     }
@@ -227,14 +256,14 @@ function addEntry() {
     horses[name].results[currentSlot] = {
         note: document.getElementById('rNote').value || "-",
         venueKey: vKey, distIdx: cIdx,
-        time: tStr, ratio: ratio, rank: rankVal || "中止",
+        time: tStr, ratio: ratio, rank: document.getElementById('rRank').value || "-",
         weight: document.getElementById('rWeight').value || "-",
         cond: document.getElementById('rTrack').value,
         isAbort: isAbort
     };
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(horses));
-    showToast("保存しました");
+    showToast(`${currentSlot + 1}走前を保存しました`);
     render();
 }
 
@@ -251,42 +280,33 @@ function render() {
             if(!h) {
                 tds += `<td class="race-td"><div class="race-box" style="color:#ccc; display:flex; align-items:center; justify-content:center;">-</div></td>`;
             } else {
-                let rClass = "", displayRatio = "";
-                let displayTime = `<div class="r-time">${h.time}</div>`;
-                
-                let rankClass = "rank-other";
-                if(h.rank == "1") rankClass = "rank-1";
-                else if(h.rank == "2") rankClass = "rank-2";
-                else if(h.rank == "3") rankClass = "rank-3";
-
-                // レース名の強調判定
-                const isNormal = h.note.includes("未勝利") || h.note.includes("オープン") || h.note.includes("OP");
-                const specialClass = isNormal ? "" : "special-race";
+                let rClass = "", displayTime = `<div class="r-time">${h.time}</div>`;
+                let rankClass = (h.rank == "1") ? "rank-1" : (h.rank == "2") ? "rank-2" : (h.rank == "3") ? "rank-3" : "";
+                let rankText = h.rank + (isNaN(h.rank) ? "" : "着");
 
                 if(h.isAbort) {
-                    displayTime = `<div class="r-abort">中止</div>`;
-                    displayRatio = `<div class="r-ratio" style="background:#f3f4f6;">-</div>`;
+                    displayTime = `<div style="color:#d32f2f; font-weight:bold; font-size:16px; margin: 2px 0;">中止</div>`;
+                    rankText = h.rank;
                 } else {
                     const r = parseFloat(h.ratio);
                     rClass = r < 101.5 ? 'best-yellow' : r < 103.0 ? 'best-blue' : r < 104.5 ? 'best-orange' : '';
-                    displayRatio = `<div class="r-ratio ${rClass}">${h.ratio}%</div>`;
                 }
 
                 tds += `<td class="race-td"><div class="race-box">
                     <div style="position:absolute;top:2px;right:2px;color:#bbb;cursor:pointer;font-size:12px;" onclick="editSlot('${name}',${idx})">✎</div>
-                    <div class="r-note ${specialClass}">${h.note}</div>
-                    <span class="r-cond">${db[h.venueKey].label}${db[h.venueKey].data[h.distIdx].name}</span>
+                    <div class="r-note-disp ${h.note.includes('未勝利') || h.note.includes('OP') ? '' : 'special-race'}">${h.note}</div>
+                    <span style="font-size:11px; color:#666;">${db[h.venueKey].label}${db[h.venueKey].data[h.distIdx].name}</span>
                     ${displayTime}
-                    <div class="r-sub-info">
-                        <span class="badge-cond" style="background:${cs[h.cond]}">${h.cond}</span>
-                        <span class="badge-weight">${h.weight}</span>
-                        <div class="rank-badge ${rankClass}">${h.rank}</div>
+                    <div style="font-size:12px; display:flex; justify-content:center; gap:5px; align-items:center; margin-top:2px;">
+                        <span style="background:${cs[h.cond]}; color:white; padding:1px 5px; border-radius:3px; font-size:10px;">${h.cond}</span>
+                        <span style="font-weight:bold; color:#444;">${h.weight}</span>
+                        <div class="rank-badge ${rankClass}">${rankText}</div>
                     </div>
-                    ${displayRatio}
+                    <div class="r-ratio ${rClass}">${h.isAbort ? '-' : h.ratio + '%'}</div>
                 </div></td>`;
             }
         });
-        tbody.innerHTML += `<tr><td class="horse-info-cell"><div><span class="h-num-badge">${hData.num}</span></div><div style="margin-top:4px; font-weight:bold;">${name}</div><div style="font-size:9px;color:#ff9999;cursor:pointer;margin-top:8px;" onclick="delHorse('${name}')">削除</div></td>${tds}</tr>`;
+        tbody.innerHTML += `<tr><td class="horse-info-cell"><div><span style="background:white; color:black; padding:1px 6px; border-radius:4px; font-weight:bold;">${hData.num}</span></div><div style="margin-top:4px; font-weight:bold;">${name}</div><div style="font-size:9px;color:#ff9999;cursor:pointer;margin-top:8px;" onclick="delHorse('${name}')">削除</div></td>${tds}</tr>`;
     });
 }
 
@@ -295,23 +315,71 @@ function editSlot(name, idx) {
     document.getElementById('hName').value = name;
     document.getElementById('hNum').value = horses[name].num;
     document.getElementById('rNote').value = h.note;
-    document.getElementById('venue').value = h.venueKey;
-    updateCourse();
-    document.getElementById('course').value = h.distIdx;
-    updateRecordDisplay();
+    const vBtn = Array.from(document.querySelectorAll('.venue-btn')).find(b => b.innerText === db[h.venueKey].label);
+    if(vBtn) selectVenue(h.venueKey, vBtn);
+    setTimeout(() => {
+        const dBtns = document.querySelectorAll('.dist-btn');
+        const targetName = db[h.venueKey].data[h.distIdx].name;
+        dBtns.forEach(btn => { if(btn.innerText === targetName) selectDist(h.distIdx, btn); });
+    }, 50);
     document.getElementById('rRank').value = h.rank;
     document.getElementById('rWeight').value = h.weight;
-    document.getElementById('rTime').value = h.isAbort ? "0" : h.time.replace(':','');
+    document.getElementById('rTime').value = h.isAbort ? "0" : h.time;
     document.getElementById('rTrack').value = h.cond;
     setSlot(idx);
     window.scrollTo(0,0);
 }
 
-function downloadJSON() { const blob = new Blob([JSON.stringify(horses)], {type: "application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `horse_data.json`; a.click(); }
-function importData(event) { const reader = new FileReader(); reader.onload = (e) => { try { horses = JSON.parse(e.target.result); localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); render(); } catch(err){ alert("形式エラー"); } }; reader.readAsText(event.target.files[0]); }
-function saveAsImage() { html2canvas(document.getElementById('captureArea')).then(canvas => { const a = document.createElement("a"); a.href = canvas.toDataURL(); a.download = "horse_analysis.png"; a.click(); }); }
-function delHorse(n){ if(confirm(n + "を消去？")){ delete horses[n]; localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); render(); } }
-function clearAll(){ if(confirm("全消去しますか？")){ horses={}; localStorage.removeItem(STORAGE_KEY); render(); } }
+function downloadCSV() {
+    const raceTitle = document.getElementById('targetRaceName').value || "analysis";
+    if (Object.keys(horses).length === 0) return alert("データがありません");
+    let csv = "\ufeff馬番,馬名,";
+    for(let i=1; i<=5; i++) csv += `${i}走前_レース,${i}走前_場所距離,${i}走前_タイム,${i}走前_着順,${i}走前_斤量,${i}走前_比率,`;
+    csv += "\n";
+    const sorted = Object.keys(horses).sort((a,b) => horses[a].num - horses[b].num);
+    sorted.forEach(name => {
+        const h = horses[name];
+        let row = `${h.num},${name},`;
+        h.results.forEach(res => {
+            if(res) {
+                const loc = db[res.venueKey].label + db[res.venueKey].data[res.distIdx].name;
+                row += `"${res.note}","${loc}","${res.time}","${res.rank}","${res.weight}","${res.ratio}%",`;
+            } else row += ",,,,,,";
+        });
+        csv += row + "\n";
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${raceTitle}.csv`;
+    a.click();
+}
+
+function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; setTimeout(() => t.style.opacity = "0", 2000); }
+function downloadJSON() { 
+    const raceTitle = document.getElementById('targetRaceName').value || "horse_data";
+    const blob = new Blob([JSON.stringify(horses)], {type: "application/json"}); 
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${raceTitle}.json`; a.click(); 
+}
+function importData(event) { 
+    const reader = new FileReader(); 
+    reader.onload = (e) => { 
+        try { 
+            horses = JSON.parse(e.target.result); 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); 
+            render(); 
+        } catch(err){ alert("形式エラー"); } 
+    }; 
+    reader.readAsText(event.target.files[0]); 
+}
+function saveAsImage() { 
+    const raceTitle = document.getElementById('targetRaceName').value || "analysis";
+    html2canvas(document.getElementById('captureArea')).then(canvas => { 
+        const a = document.createElement("a"); a.href = canvas.toDataURL(); a.download = `${raceTitle}.png`; a.click(); 
+    }); 
+}
+function delHorse(n){ if(confirm(n + "を削除？")){ delete horses[n]; localStorage.setItem(STORAGE_KEY, JSON.stringify(horses)); render(); } }
+function clearAll(){ if(confirm("全消去しますか？")){ horses={}; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(STORAGE_KEY + '_title'); document.getElementById('targetRaceName').value=""; render(); } }
 </script>
 </body>
 </html>
